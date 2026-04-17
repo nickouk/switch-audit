@@ -4,6 +4,7 @@ import time
 import getpass
 import urllib.request
 import urllib.error
+import openpyxl
 from netmiko import ConnectHandler
 
 def get_vendor(mac):
@@ -21,6 +22,8 @@ def get_vendor(mac):
 def get_device_type(ip, mac="", vlan=""):
     if mac.startswith("00:05:1B") or mac.startswith("00:05:50"):
         return "RDM/DCI"
+    if mac.startswith("00:40:9D"):
+        return "Navarra Cigarette Dispenser"
 
     if not ip or ip == "Unknown":
         return "Unknown"
@@ -49,14 +52,39 @@ def get_device_type(ip, mac="", vlan=""):
 def main():
     print("=== Network Device Audit ===")
     
-    sites = [
-        {"name": "0320 - EAST PRESTON (15/04)", "switch_ip": "172.31.90.43", "router_ip": "172.31.90.44"},
-        {"name": "0220 - ANGMERING (15/04)", "switch_ip": "172.31.84.59", "router_ip": "172.31.84.60"},
-        {"name": "0326 - CHOBHAM (16/04)", "switch_ip": "172.31.90.155", "router_ip": "172.31.90.156"},
-        {"name": "0023 - NORTH BADDESLEY (16/04)", "switch_ip": "172.31.89.11", "router_ip": "172.31.89.12"},
-        {"name": "9719 - ADDLESTONE (16/04)", "switch_ip": "172.31.96.219", "router_ip": "172.31.96.220"},
-        {"name": "0406 - WEST END (16/04)", "switch_ip": "172.31.94.11", "router_ip": "172.31.94.12"},
-    ]
+    excel_file = "/mnt/c/Users/nick.oneill/OneDrive - Maintel Europe Limited/Azzurri Docs/Scoop/Network of the Future 2025/Switch Audits/switch-audits.xlsx"
+    sites = []
+    
+    try:
+        wb = openpyxl.load_workbook(excel_file)
+        sheet = wb.active
+        
+        for col_idx in range(1, sheet.max_column + 1):
+            site_name = sheet.cell(row=1, column=col_idx).value
+            ips_text = sheet.cell(row=2, column=col_idx).value
+            
+            if site_name and ips_text:
+                ips_str = str(ips_text)
+                
+                # Match IPs using regex patterns
+                r01_match = re.search(r'R01=([0-9\.]+)', ips_str)
+                sw_match = re.search(r'SW=([0-9\.]+)', ips_str)
+                
+                if r01_match and sw_match:
+                    sites.append({
+                        "name": str(site_name).strip(),
+                        "router_ip": r01_match.group(1),
+                        "switch_ip": sw_match.group(1)
+                    })
+                    
+        print(f"[+] Loaded {len(sites)} sites from Excel.")
+    except Exception as e:
+        print(f"[-] Error reading {excel_file}: {e}")
+        return
+
+    if not sites:
+        print("[-] No valid sites found in the Excel file.")
+        return
 
     username = input("Enter Username: ")
     password = getpass.getpass("Enter Password: ")
