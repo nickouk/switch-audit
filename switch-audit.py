@@ -66,9 +66,9 @@ def main():
             if site_name and ips_text:
                 ips_str = str(ips_text)
                 
-                # Match IPs using regex patterns
-                r01_match = re.search(r'R01=([0-9\.]+)', ips_str)
-                sw_match = re.search(r'SW=([0-9\.]+)', ips_str)
+                # Match IPs using regex patterns (accounting for spaces and naming "RTR")
+                r01_match = re.search(r'RTR\s*=\s*([0-9\.]+)', ips_str)
+                sw_match = re.search(r'SW\s*=\s*([0-9\.]+)', ips_str)
                 
                 if r01_match and sw_match:
                     sites.append({
